@@ -104,29 +104,19 @@ A terraform script under `./terraform/1_env-foundations` has been created to bui
 # update and run in shell to set env vars
 PROJECT_GKE=<project-id>
 PROJECT_CICD=<project-id>
-REGION=us-central1
-VPC=my-new-vpc
-SUBNET=us-central1
-SA_GKE=my-gke-sa
-SA_CLOUDBUILD=my-cloudbuild-sa
-SA_CLOUDDEPLOY=my-clouddeploy-sa
-GKE_TEST=test-cluster
-GKE_STAGE=stage-cluster
-GKE_PROD=prod-cluster
-GCS_LOGS=<random-name-for-bucket>
-
-PROJECT_GKE=kwpark-deloitte-gke-5afcb309
-PROJECT_CICD=kwpark-deloitte-cicd-5afcb309
-REGION=us-central1
-VPC=my-new-vpc
-SUBNET=us-central1
-SA_GKE=my-gke-sa
-SA_CLOUDBUILD=my-cloudbuild-sa
-SA_CLOUDDEPLOY=my-clouddeploy-sa
-GKE_TEST=my-test-cluster
-GKE_STAGE=stage-cluster
-GKE_PROD=prod-cluster
-GCS_LOGS=kwpark-logs-again-cicd-1234
+REGION=<region>
+VPC=<name of VPC in CICD project>
+SUBNET=<name>
+SA_GKE=<email of SA used by GKE cluster>
+SA_CLOUDBUILD=<email of SA used by Cloud Build>
+SA_CLOUDDEPLOY=<email of SA used by Cloud Deploy>
+GKE_TEST=<name of test GKE cluster>
+GKE_STAGE=<name of test GKE cluster>
+GKE_PROD=<name of test GKE cluster>
+GCS_LOGS=<name of bucket to create to store logs>
+GH_REPO_NAME=<e.g. pop-kustomize>
+GH_REPO_FORK_OWNER=<the GH account you used to fork repo>
+CSR=github_${GH_REPO_FORK_OWNER}_${GH_REPO_NAME}
 
 # navigate to Cloud Build > Triggers, select the "global (non-regional)" region and click on the "Connect Repository" button. Select the "Github (legacy) radio button, authenticate, and select your fork of this repo
 
@@ -170,6 +160,20 @@ gcloud builds worker-pools create my-private-pool \
   --peered-network projects/${PROJECT_CICD}/global/networks/${VPC} \
   --no-public-egress
 
+# create cloudbuild.yaml and fill in env-specific vars
+sed "s/<PROJECT>/$PROJECT_CICD/g" cloudbuild.yaml.template > cloudbuild.yaml
+sed -i "s/<REGION>/$REGION/g" cloudbuild.yaml
+sed -i "s/<GCS_LOGS>/$GCS_LOGS/g" cloudbuild.yaml
+
+# create build trigger
+gcloud beta builds triggers create cloud-source-repositories \
+  --name my-trigger \
+  --region $REGION \
+  --build-config cloudbuild.yaml \
+  --service-account projects/$PROJECT_CICD/serviceAccounts/$SA_CLOUDBUILD@$PROJECT_CICD.iam.gserviceaccount.com \
+  --branch-pattern "^main$" \
+  --project $PROJECT_CICD \
+  --repo $CSR
 
 # create clouddeploy.yaml and fill in env-specific vars
 sed "s/<PROJECT_CICD>/$PROJECT_CICD/g" clouddeploy.yaml.template > clouddeploy.yaml
@@ -185,29 +189,6 @@ gcloud deploy apply \
   --file clouddeploy.yaml \
   --region $REGION \
   --project $PROJECT_CICD
-
-
-# grab name of repo that was created
-gcloud source repos list \
-  --project $PROJECT_CICD
-
-# set IP_RANGE env var
-CSR=github_enzyme3_pop-kustomize
-
-# create cloudbuild.yaml and fill in env-specific vars
-sed "s/<PROJECT>/$PROJECT_CICD/g" cloudbuild.yaml.template > cloudbuild.yaml
-sed -i "s/<REGION>/$REGION/g" cloudbuild.yaml
-sed -i "s/<GCS_LOGS>/$GCS_LOGS/g" cloudbuild.yaml
-
-# create trigger
-gcloud beta builds triggers create cloud-source-repositories \
-  --name my-trigger \
-  --region $REGION \
-  --build-config cloudbuild.yaml \
-  --service-account projects/$PROJECT_CICD/serviceAccounts/$SA_CLOUDBUILD@$PROJECT_CICD.iam.gserviceaccount.com \
-  --branch-pattern "^main$" \
-  --project $PROJECT_CICD \
-  --repo $CSR
 
 # create SA for fleet host
 gcloud beta services identity create \
