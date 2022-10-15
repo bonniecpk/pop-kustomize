@@ -226,3 +226,4 @@ gcloud beta container fleet memberships generate-gateway-rbac \
   --kubeconfig ~/.kube/config \
   --context gke_${PROJECT_GKE}_${REGION}_${GKE_TEST} \
   --apply
+
