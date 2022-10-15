@@ -17,22 +17,26 @@ If you've already done that, you can start the setup tutorial below.
 ## Setup
 The demo assumes that we are working in a semi-locked down environment that follows certain security-best practices, such as not using default service accounts(SAs), limiting access granted to SAs/admins, and enforcing key organization policy constraints. 2X sets of terraform scripts are provided to create such an environment in GCP.
 
-### Pre-requisiste (env-foundations)
-Skip this section if the following pre-reqs have already been created. If not, run the terraform script under `./terraform/env-foundations`
-* 2X projects
-    * one for GKE
-    * one for CI/CD pipeline
+### Pre-requisistes #1
+A terraform script under `./terraform/1_env-foundations` has been created to build out the below pre-reqs. If the pre-reqs are not set, either run the terraform script, or apply the changes manually
+* 2X projects:
+  * one for GKE
+  * one for CI/CD pipeline
 * Org policies applied on both projects (set on parent folder):
-    * constraints/compute.vmExternalIpAccess
-    * constraints/iam.allowedPolicyMemberDomains
-    * constraints/compute.skipDefaultNetworkCreation
-* services enabled in both projects
-    * compute.googleapis.com
+  * constraints/compute.vmExternalIpAccess
+  * constraints/iam.allowedPolicyMemberDomains
+  * constraints/compute.skipDefaultNetworkCreation
+* services enabled in both projects:
+  * compute.googleapis.com
+* service enable in GKE project:
+  * container.googleapis.com
 * Custom VPC created in both projects
-* VPC-SC NOT enabled
+* SA for GKE created in GKE project
+* 3X private GKE clusters created in GKE project
 
-### P
-### Environment
+### Pre-requisites #2
+A terraform script under `./terraform/1_env-foundations` has been created to build out the below pre-reqs. If the pre-reqs are not set, either run the terraform script, or apply the changes manually
+
 
 ### Pre-requisites
 * Projects with the above environment setup
@@ -111,8 +115,8 @@ GKE_STAGE=stage-cluster
 GKE_PROD=prod-cluster
 GCS_LOGS=<random-name-for-bucket>
 
-PROJECT_GKE=kwpark-deloitte-gke-e968977c
-PROJECT_CICD=kwpark-deloitte-cicd-e968977c
+PROJECT_GKE=kwpark-deloitte-gke-5afcb309
+PROJECT_CICD=kwpark-deloitte-cicd-5afcb309
 REGION=us-central1
 VPC=my-new-vpc
 SUBNET=us-central1
@@ -122,7 +126,14 @@ SA_CLOUDDEPLOY=my-clouddeploy-sa
 GKE_TEST=my-test-cluster
 GKE_STAGE=stage-cluster
 GKE_PROD=prod-cluster
-GCS_LOGS=kwpark-logs-again-cicd-123
+GCS_LOGS=kwpark-logs-again-cicd-1234
+
+# navigate to Cloud Build > Triggers, select the "global (non-regional)" region and click on the "Connect Repository" button. Select the "Github (legacy) radio button, authenticate, and select your fork of this repo
+
+# create GCS bucket to store build/deploy logs
+gcloud storage buckets create gs://$GCS_LOGS \
+  --project $PROJECT_CICD \
+  --location $REGION
 
 # create Artifact Registry repo
 gcloud artifacts repositories create pop-stats \
@@ -146,21 +157,11 @@ gcloud services vpc-peerings connect \
   --network $VPC \
   --project $PROJECT_CICD
 
-# grab IP range that was created
-gcloud compute addresses list \
-  --project $PROJECT_CICD
-
-# set IP_RANGE env var
-IP_RANGE=10.50.232.0/24
-
-# create ingress FW rule allowing requests from the IP range into VPC
-gcloud compute firewall-rules create cloudbuildrange-ingress \
-  --network $VPC \
-  --direction ingress \
-  --action allow \
-  --source-ranges $IP_RANGE \
-  --project $PROJECT_CICD \
-  --rules all
+# grab IP range that was created and set as shell variable
+IP_RANGE=$(gcloud compute addresses describe cloudbuildrange \
+  --global \
+  --format="value(address)" \
+  --project $PROJECT_CICD)
 
 # create cloud build private pool
 gcloud builds worker-pools create my-private-pool \
@@ -169,10 +170,6 @@ gcloud builds worker-pools create my-private-pool \
   --peered-network projects/${PROJECT_CICD}/global/networks/${VPC} \
   --no-public-egress
 
-# create GCS bucket to store build/deploy logs
-gcloud storage buckets create gs://$GCS_LOGS \
-  --project $PROJECT_CICD \
-  --location $REGION
 
 # create clouddeploy.yaml and fill in env-specific vars
 sed "s/<PROJECT_CICD>/$PROJECT_CICD/g" clouddeploy.yaml.template > clouddeploy.yaml
@@ -189,8 +186,6 @@ gcloud deploy apply \
   --region $REGION \
   --project $PROJECT_CICD
 
-# connect to a git repo and mirror it into Cloud Source Repositories
-# from Cloud Build > Triggers, click `Manage Repositories` and add repo as Github (legacy)
 
 # grab name of repo that was created
 gcloud source repos list \
