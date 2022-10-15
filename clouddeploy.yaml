@@ -21,13 +21,13 @@ metadata:
   name: test
 description: test cluster
 anthosCluster:
-  membership: projects/kwpark-deloitte-cicd-e968977c/locations/global/memberships/my-test-cluster
+  membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-test-cluster
 executionConfigs:
 - usages:
   - RENDER
   - DEPLOY
-  workerPool: projects/kwpark-deloitte-cicd-e968977c/locations/us-central1/workerPools/my-private-pool
-  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-e968977c.iam.gserviceaccount.com
+  workerPool: projects/kwpark-deloitte-cicd-5afcb309/locations/us-central1/workerPools/my-private-pool
+  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-5afcb309.iam.gserviceaccount.com
   
 ---
 
@@ -37,13 +37,13 @@ metadata:
   name: staging
 description: staging cluster
 anthosCluster:
-  membership: projects/kwpark-deloitte-cicd-e968977c/locations/global/memberships/stage-cluster
+  membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-stage-cluster
 executionConfigs:
 - usages:
   - RENDER
   - DEPLOY
-  workerPool: projects/kwpark-deloitte-cicd-e968977c/locations/us-central1/workerPools/my-private-pool
-  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-e968977c.iam.gserviceaccount.com
+  workerPool: projects/kwpark-deloitte-cicd-5afcb309/locations/us-central1/workerPools/my-private-pool
+  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-5afcb309.iam.gserviceaccount.com
 
 
 ---
@@ -55,10 +55,10 @@ metadata:
 description: prod cluster
 requireApproval: true
 anthosCluster:
-  membership: projects/kwpark-deloitte-cicd-e968977c/locations/global/memberships/prod-cluster
+  membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-prod-cluster
 executionConfigs:
 - usages:
   - RENDER
   - DEPLOY
-  workerPool: projects/kwpark-deloitte-cicd-e968977c/locations/us-central1/workerPools/my-private-pool
-  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-e968977c.iam.gserviceaccount.com
+  workerPool: projects/kwpark-deloitte-cicd-5afcb309/locations/us-central1/workerPools/my-private-pool
+  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-5afcb309.iam.gserviceaccount.com
