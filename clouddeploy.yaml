@@ -6,12 +6,6 @@ description: pop-stats application delivery pipeline
 serialPipeline:
  stages:
  - targetId: test
- - targetId: staging
-   profiles:
-   - staging
- - targetId: prod
-   profiles:
-   - prod
 
 ---
 
@@ -22,40 +16,6 @@ metadata:
 description: test cluster
 anthosCluster:
   membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-test-cluster
-executionConfigs:
-- usages:
-  - RENDER
-  - DEPLOY
-  workerPool: projects/kwpark-deloitte-cicd-5afcb309/locations/us-central1/workerPools/my-private-pool
-  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-5afcb309.iam.gserviceaccount.com
-  
----
-
-apiVersion: deploy.cloud.google.com/v1
-kind: Target
-metadata:
-  name: staging
-description: staging cluster
-anthosCluster:
-  membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-stage-cluster
-executionConfigs:
-- usages:
-  - RENDER
-  - DEPLOY
-  workerPool: projects/kwpark-deloitte-cicd-5afcb309/locations/us-central1/workerPools/my-private-pool
-  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-5afcb309.iam.gserviceaccount.com
-
-
----
-
-apiVersion: deploy.cloud.google.com/v1
-kind: Target
-metadata:
-  name: prod
-description: prod cluster
-requireApproval: true
-anthosCluster:
-  membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-prod-cluster
 executionConfigs:
 - usages:
   - RENDER
