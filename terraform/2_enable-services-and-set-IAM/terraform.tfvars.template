@@ -1,0 +1,10 @@
+# customize as needed and rename file to terraform.tfvars
+region = "XX-XX#"
+
+project_cicd = "XXXX"
+project_gke  = "XXXX"
+
+service_account_cloudbuild_name  = "XXXX"
+service_account_clouddeploy_name = "XXXX"
+service_account_gke_email        = "XX@XX.XX"
+iam_member                       = "XX@XX.XX"

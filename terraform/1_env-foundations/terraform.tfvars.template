@@ -1,0 +1,20 @@
+# customize as needed and rename file to terraform.tfvars
+org_id          = "############"
+billing_account = "XXXXXX-XXXXXX-XXXXXXX"
+region          = "XX-XX#"
+
+# retrieve via gcloud organizations list (DIRECTORY_CUSTOMER_ID)
+workspace_customer_id = "XXXXXXXXX"
+
+folder_prefix  = "XXXX"
+project_prefix = "XXXX"
+
+vpc_name             = "XXXX"
+subnet_region        = "XX-XX#"
+subnet_ip_cidr_range = "#.#.#.#/#"
+
+gke_test_name  = "XXXX"
+gke_stage_name = "XXXX"
+gke_prod_name  = "XXXX"
+
+service_account_gke_name = "XXXX"

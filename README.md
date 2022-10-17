@@ -15,14 +15,19 @@ This demo relies on you making git check-ins to simulate a developer workflow. S
 If you've already done that, you can start the setup tutorial below.
 
 ## Setup
-The demo assumes that we are working in a semi-locked down environment that follows certain security-best practices, such as not using default service accounts(SAs), limiting access granted to SAs/admins, and enforcing key organization policy constraints. 2X sets of terraform scripts are provided to create such an environment in GCP.
+The demo assumes that we are working in a semi-locked down environment that follows certain security-best practices, such as not using default service accounts(SAs), limiting access granted to SAs/admins, and enforcing key organization policy constraints
 
-### Pre-requisistes #1
-A terraform script under `./terraform/1_env-foundations` has been created to build out the below pre-reqs. If the pre-reqs are not set, either run the terraform script, or apply the changes manually
+Deploying this demo is split into the following steps:
+### Step 1: Fork Repo
+If you haven't already, [fork this repo on Github](https://github.com/Enzyme3/pop-kustomize/fork)
+While 
+
+### Step 2: Setup pre-reqs
+The demo assumes the following about the environment the pipeline will be deployed into:
 * 2X projects:
-  * one for GKE
-  * one for CI/CD pipeline
-* Org policies applied on both projects (set on parent folder):
+  * 1X to contain the CI/CD pipeline (aka CI/CD project)
+  * 1X to contain the target GKE clusters (aka GKE project)
+* Org policies applied on both projects:
   * constraints/compute.vmExternalIpAccess
   * constraints/iam.allowedPolicyMemberDomains
   * constraints/compute.skipDefaultNetworkCreation
@@ -30,95 +35,106 @@ A terraform script under `./terraform/1_env-foundations` has been created to bui
   * compute.googleapis.com
 * service enable in GKE project:
   * container.googleapis.com
-* Custom VPC created in both projects
-* SA for GKE created in GKE project
+* Custom VPC/subnet created in both projects
 * 3X private GKE clusters created in GKE project
+  * workload identity enabled in each cluster
+  * clusters use a custom service account
+  * control plane should be accessible to the machine running the deployment scripts, either by running the script in a network peered with the control plane, or by using [authorized network](https://cloud.google.com/kubernetes-engine/docs/how-to/authorized-networks)
 
-### Pre-requisites #2
-A terraform script under `./terraform/1_env-foundations` has been created to build out the below pre-reqs. If the pre-reqs are not set, either run the terraform script, or apply the changes manually
+If needed, a terraform script under `./terraform/1_env-foundations` has been provided to build out the above environment. To use, make a copy of `./terraform/1_env-foundations/terraform.tvars.template`, rename it to `./terraform/1_env-foundations/terraform.tvars`, and update the file with info specific to your environment.
+
+### Step #3: Enable Services and Setup IAM 
+Before deploying the pipeline, the following services have to be enabled and IAM permissions have to be granted:
+
+#### Enable Services
+| Service to Enable        | Project           |
+| ------------- |:-------------:| 
+| sourcerepo.googleapis.com      | CI/CD Project | 
+| cloudbuild.googleapis.com      | CI/CD Project | 
+| artifactregistry.googleapis.com | CI/CD Project | 
+| containerscanning.googleapis.com | CI/CD Project | 
+| servicenetworking.googleapis.com | CI/CD Project | 
+| artifactregistry.googleapis.com | CI/CD Project | 
+| cloudbuild.googleapis.com | CI/CD Project | 
+| clouddeploy.googleapis.com | CI/CD Project | 
+| cloudresourcemanager.googleapis.com | CI/CD Project | 
+| gkehub.googleapis.com | CI/CD Project | 
+| serviceusage.googleapis.com | CI/CD Project | 
+| connectgateway.googleapis.com | CI/CD Project | 
+| anthos.googleapis.com | CI/CD Project | 
+| gkeconnect.googleapis.com | CI/CD Project | 
+
+#### IAM
+* Create 3X service accounts(SAs) in the CI/CD project: 
+  * SA for cloud build
+  * SA for cloud deploy 
+  * generate GCP-managed SA for gkehub by running: `gcloud beta services identity create --service=gkehub.googleapis.com`
+
+Next, grant the permissions as indicated below:
+
+| Member        | Role           | Resource
+| ------------- |:-------------|:-------------:| 
+| admin | roles/source.admin | CI/CD Project |
+| Cloud Build SA | roles/source.reader | CI/CD Project |
+| admin | roles/cloudbuild.builds.editor | CI/CD Project |
+| admin | roles/storage.admin | CI/CD Project |
+| Cloud Build SA | roles/storage.admin | CI/CD Project |
+| Cloud Deploy SA | roles/storage.admin | CI/CD Project |
+| admin | roles/serviceusage.serviceUsageConsumer | CI/CD Project |
+| admin | roles/artifactregistry.admin | CI/CD Project |
+| Cloud Build SA | roles/artifactregistry.writer | CI/CD Project |
+| admin | roles/compute.networkAdmin | CI/CD Project |
+| admin | roles/cloudbuild.workerPoolOwner | CI/CD Project |
+| admin | roles/clouddeploy.admin | CI/CD Project |
+| Cloud Build SA | roles/clouddeploy.releaser | CI/CD Project |
+| Cloud Build SA | roles/logging.logWriter | CI/CD Project |
+| Cloud Deploy SA | roles/logging.logWriter | CI/CD Project |
+| admin | roles/gkehub.admin | CI/CD Project |
+| Cloud Deploy SA | roles/gkehub.admin | CI/CD Project |
+| admin | roles/container.admin | GKE Project |
+| admin | roles/gkehub.gatewayAdmin | CI/CD Project |
+| Cloud Deploy SA | roles/gkehub.gatewayAdmin | CI/CD Project |
+| GKE SA | roles/artifactregistry.reader | CI/CD Project |
+| admin | roles/iam.serviceAccountUser | Cloud Build SA |
+| admin | roles/iam.serviceAccountUser | Cloud Deploy SA |
+| Cloud Build SA | roles/iam.serviceAccountUser | Cloud Deploy SA |
+| GKE Hub SA | roles/gkehub.serviceAgent | CI/CD Project |
+| GKE Hub SA | roles/gkehub.serviceAgent | GKE Project |
+
+If needed, a terraform script under `./terraform/2_enable-services-and-set-IAM` has been provided to apply the above configs. To use, make a copy of `./terraform/2_enable-services-and-set-IAM/terraform.tvars.template`, rename it to `./terraform/2_enable-services-and-set-IAM/terraform.tvars`, and update the file with info specific to your environment.
+
+### Step #4: Mirror Github repo into Cloud Source Repositories
+* in the GCP console, navigate to [Cloud Build > Triggers](https://console.cloud.google.com/cloud-build/triggers)
+* Click on the `MANAGE REPOSITORIES` button
+* Select the `global (non-regional)` region and then click on the `CONNECT REPOSITORY` button
+  * 1) Select Source: Click on the `SHOW MORE` dropdown, select the `Github(legacy)` radio button, and check-mark the consent box
+  * 2) Authenticate: If prompted, authenticate to Github
+  * 3) Select repository: select the fork you created of this [repo](https://github.com/Enzyme3/pop-kustomize)
+  * Don't follow prompts to create a trigger
+
+### Step #5: Deploy Pipeline
+Pipeline can be deployed by either following the manual steps below, or by running the terraform script. 
+
+If going the terraform route, a terraform script under `./terraform/4_deploy_pipeline` has been provided. To use, make a copy of `./terraform/4_deploy-pipeline/terraform.tvars.template`, rename it to `./terraform/4_deploy-pipeline/terraform.tvars`, and update the file with info specific to your environment
 
 
-### Pre-requisites
-* Projects with the above environment setup
-* Services Enabled
-    * compute.googleapis.com
-    * cloudresourcemanager.googleapis.com
-    * container.googleapis.com
-    * artifactregistry.googleapis.com
-    * containerscanning.googleapis.com
-    * cloudbuild.googleapis.com
-    * clouddeploy.googleapis.com
-    * servicenetworking.googleapis.com
-    * sourcerepo.googleapis.com
-    * connectgateway.googleapis.com
-    * anthos.googleapis.com
-    * gkeconnect.googleapis.com
-    * gkehub.googleapis.com
-    * serviceusage.googleapis.com
-* IAM
-    * Admin creating pipeline should have following roles:
-        * roles/artifactregistry.admin
-        * roles/container.admin
-        * roles/compute.networkAdmin
-        * roles/compute.securityAdmin
-        * roles/cloudbuild.workerPoolOwner
-        * roles/cloudbuild.workerPoolUser
-        * roles/clouddeploy.admin
-        * roles/storage.admin
-        * roles/serviceusage.serviceUsageConsumer
-        * roles/cloudbuild.builds.editor
-        * roles/source.admin
-        * roles/logging.viewer
-        * roles/gkehub.admin
-    * 3X Service Account:
-        * 1) SA for GKE
-            * roles: 
-                * roles/artifactregistry.reader
-            * members who have roles/iam.serviceAccountUser on SA
-                * admin user account
-        * 2) SA for Cloud Build
-            * roles: 
-                * roles/storage.admin
-                * roles/logging.logWriter
-                * roles/artifactregistry.writer
-                * roles/source.reader
-                * roles/clouddeploy.jobRunner
-                * roles/clouddeploy.releaser
-            * members who have roles/iam.serviceAccountUser on SA
-                * admin user account
-            * members who have roles/iam.serviceAccountTokenCreator on SA
-                * admin user account
-        * 3) SA for Cloud Deploy
-            * roles:
-                * roles/storage.admin
-                * roles/logging.logWriter
-                * roles/container.developer
-                * roles/gkehub.admin
-                * roles/gkehub.gatewayEditor
-            * members who have roles/iam.serviceAccountUser on SA
-                * cloud build SA
-                * admin user account
-
-### Create Pipeline
+#### Manual Steps to Deploy Pipeline
 ```
-# update and run in shell to set env vars
+# fill-env specific vars and run in shell to set env vars
 PROJECT_GKE=<project-id>
 PROJECT_CICD=<project-id>
 REGION=<region>
 VPC=<name of VPC in CICD project>
 SUBNET=<name>
-SA_GKE=<email of SA used by GKE cluster>
-SA_CLOUDBUILD=<email of SA used by Cloud Build>
-SA_CLOUDDEPLOY=<email of SA used by Cloud Deploy>
+SA_CLOUDBUILD_EMAIL=<email of SA used by Cloud Build>
+SA_CLOUDDEPLOY_EMAIL=<email of SA used by Cloud Deploy>
 GKE_TEST=<name of test GKE cluster>
 GKE_STAGE=<name of test GKE cluster>
 GKE_PROD=<name of test GKE cluster>
-GCS_LOGS=<name of bucket to create to store logs>
-GH_REPO_NAME=<e.g. pop-kustomize>
+GCS_LOGS=<name of bucket that will be created to store logs>
+GH_REPO_NAME=<pop-kustomize, or name of your fork>
 GH_REPO_FORK_OWNER=<the GH account you used to fork repo>
 CSR=github_${GH_REPO_FORK_OWNER}_${GH_REPO_NAME}
-
-# navigate to Cloud Build > Triggers, select the "global (non-regional)" region and click on the "Connect Repository" button. Select the "Github (legacy) radio button, authenticate, and select your fork of this repo
 
 # create GCS bucket to store build/deploy logs
 gcloud storage buckets create gs://$GCS_LOGS \
@@ -147,12 +163,6 @@ gcloud services vpc-peerings connect \
   --network $VPC \
   --project $PROJECT_CICD
 
-# grab IP range that was created and set as shell variable
-IP_RANGE=$(gcloud compute addresses describe cloudbuildrange \
-  --global \
-  --format="value(address)" \
-  --project $PROJECT_CICD)
-
 # create cloud build private pool
 gcloud builds worker-pools create my-private-pool \
   --project $PROJECT_CICD \
@@ -161,28 +171,27 @@ gcloud builds worker-pools create my-private-pool \
   --no-public-egress
 
 # create cloudbuild.yaml and fill in env-specific vars
-sed "s/<PROJECT>/$PROJECT_CICD/g" cloudbuild.yaml.template > cloudbuild.yaml
+sed "s/<PROJECT>/$PROJECT_CICD/g" cloudbuild.yaml.template > outputcloudbuild.yaml
 sed -i "s/<REGION>/$REGION/g" cloudbuild.yaml
-sed -i "s/<GCS_LOGS>/$GCS_LOGS/g" cloudbuild.yaml
+sed -i "s/<GCS>/$GCS_LOGS/g" cloudbuild.yaml
 
 # create build trigger
 gcloud beta builds triggers create cloud-source-repositories \
   --name my-trigger \
   --region $REGION \
   --build-config cloudbuild.yaml \
-  --service-account projects/$PROJECT_CICD/serviceAccounts/$SA_CLOUDBUILD@$PROJECT_CICD.iam.gserviceaccount.com \
+  --service-account projects/${PROJECT_CICD}/serviceAccounts/${SA_CLOUDBUILD_EMAIL} \
   --branch-pattern "^main$" \
   --project $PROJECT_CICD \
   --repo $CSR
 
 # create clouddeploy.yaml and fill in env-specific vars
 sed "s/<PROJECT_CICD>/$PROJECT_CICD/g" clouddeploy.yaml.template > clouddeploy.yaml
-sed -i "s/<PROJECT_GKE>/$PROJECT_GKE/g" clouddeploy.yaml
 sed -i "s/<REGION>/$REGION/g" clouddeploy.yaml
 sed -i "s/<GKE_TEST>/$GKE_TEST/g" clouddeploy.yaml
 sed -i "s/<GKE_STAGE>/$GKE_STAGE/g" clouddeploy.yaml
 sed -i "s/<GKE_PROD>/$GKE_PROD/g" clouddeploy.yaml
-sed -i "s/<SA_CLOUDDEPLOY>/$SA_CLOUDDEPLOY/g" clouddeploy.yaml
+sed -i "s/<SA_CLOUDDEPLOY_EMAIL>/$SA_CLOUDDEPLOY_EMAIL/g" clouddeploy.yaml
 
 # create cloud deploy pipeline
 gcloud deploy apply \
@@ -190,40 +199,68 @@ gcloud deploy apply \
   --region $REGION \
   --project $PROJECT_CICD
 
-# create SA for fleet host
-gcloud beta services identity create \
-  --service gkehub.googleapis.com \
-  --project $PROJECT_CICD
-
-# get project number of CICD project
-PROJECT_CICD_NUMBER=$(gcloud projects describe "${PROJECT_CICD}" --format "value(projectNumber)")
-
-# grant SA roles/gkehub.serviceAgent in CICD project
-gcloud projects add-iam-policy-binding $PROJECT_CICD \
-  --member "serviceAccount:service-${PROJECT_CICD_NUMBER}@gcp-sa-gkehub.iam.gserviceaccount.com" \
-  --role roles/gkehub.serviceAgent
-
-# grant SA roles/gkehub.serviceAgent in GKE project
-gcloud projects add-iam-policy-binding $PROJECT_GKE \
-  --member "serviceAccount:service-${PROJECT_CICD_NUMBER}@gcp-sa-gkehub.iam.gserviceaccount.com" \
-  --role roles/gkehub.serviceAgent
-
-# register cluster to fleet
- gcloud container fleet memberships register $GKE_TEST \
+# register test cluster to fleet
+ gcloud container hub memberships register $GKE_TEST \
  --gke-uri=https://container.googleapis.com/v1/projects/${PROJECT_GKE}/locations/$REGION/clusters/$GKE_TEST \
  --enable-workload-identity \
  --project $PROJECT_CICD
 
-gcloud container clusters get-credentials $GKE_TEST \
-  --region $REGION \
-  --project $PROJECT_GKE
+# register stage cluster to fleet
+ gcloud container hub memberships register $GKE_STAGE \
+ --gke-uri=https://container.googleapis.com/v1/projects/${PROJECT_GKE}/locations/$REGION/clusters/$GKE_STAGE \
+ --enable-workload-identity \
+ --project $PROJECT_CICD
 
-gcloud beta container fleet memberships generate-gateway-rbac \
+# register prod cluster to fleet
+ gcloud container hub memberships register $GKE_PROD \
+ --gke-uri=https://container.googleapis.com/v1/projects/${PROJECT_GKE}/locations/$REGION/clusters/$GKE_PROD \
+ --enable-workload-identity \
+ --project $PROJECT_CICD
+
+# get context for test cluster
+gcloud container hub memberships get-credentials $GKE_TEST \
+  --project $PROJECT_CICD
+
+# get context for stage cluster
+gcloud container hub memberships get-credentials $GKE_STAGE \
+  --project $PROJECT_CICD
+
+# get context for prod cluster
+gcloud container hub memberships get-credentials $GKE_PROD \
+  --project $PROJECT_CICD
+
+# set RBAC for test cluster
+gcloud beta container hub memberships generate-gateway-rbac \
   --membership $GKE_TEST \
   --role clusterrole/cluster-admin \
-  --users $SA_CLOUDDEPLOY@$PROJECT.iam.gserviceaccount.com \
+  --users ${SA_CLOUDDEPLOY_EMAIL} \
   --project=$PROJECT_CICD \
   --kubeconfig ~/.kube/config \
-  --context gke_${PROJECT_GKE}_${REGION}_${GKE_TEST} \
+  --context connectgateway_${PROJECT_CICD}_global_${GKE_TEST} \
   --apply
 
+# set RBAC for stage cluster
+gcloud beta container hub memberships generate-gateway-rbac \
+  --membership $GKE_STAGE \
+  --role clusterrole/cluster-admin \
+  --users ${SA_CLOUDDEPLOY_EMAIL} \
+  --project=$PROJECT_CICD \
+  --kubeconfig ~/.kube/config \
+  --context connectgateway_${PROJECT_CICD}_global_${GKE_STAGE} \
+  --apply
+
+# set RBAC for prod cluster
+gcloud beta container hub memberships generate-gateway-rbac \
+  --membership $GKE_PROD \
+  --role clusterrole/cluster-admin \
+  --users ${SA_CLOUDDEPLOY_EMAIL} \
+  --project=$PROJECT_CICD \
+  --kubeconfig ~/.kube/config \
+  --context connectgateway_${PROJECT_CICD}_global_${GKE_PROD} \
+  --apply
+```
+
+### Step #6: Test Pipeline
+If you completed Step #5 using the provided terraform script, move the `./terraform/4_deploy-pipeline/cloudbuild.yaml` file to the root of the this repo. If you completed Step #5 using the manual steps, the file should already be at the root.
+
+Push `cloudbuild.yaml` to your fork's main branch. Note that the `cloudbuild.yaml` file MUST be at the root of the repo. Once the push is completed, Cloud Build will trigger and begin building the sample app and deploying it to the test cluster. Navigate to Cloud Deploy to promote the code to the higher environments.
