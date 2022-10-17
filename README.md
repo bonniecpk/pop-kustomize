@@ -171,7 +171,7 @@ gcloud builds worker-pools create my-private-pool \
   --no-public-egress
 
 # create cloudbuild.yaml and fill in env-specific vars
-sed "s/<PROJECT>/$PROJECT_CICD/g" cloudbuild.yaml.template > outputcloudbuild.yaml
+sed "s/<PROJECT>/$PROJECT_CICD/g" cloudbuild.yaml.template > cloudbuild.yaml
 sed -i "s/<REGION>/$REGION/g" cloudbuild.yaml
 sed -i "s/<GCS>/$GCS_LOGS/g" cloudbuild.yaml
 
