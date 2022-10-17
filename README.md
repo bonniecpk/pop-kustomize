@@ -41,7 +41,7 @@ The demo assumes the following about the environment the pipeline will be deploy
   * clusters use a custom service account
   * control plane should be accessible to the machine running the deployment scripts, either by running the script in a network peered with the control plane, or by using [authorized network](https://cloud.google.com/kubernetes-engine/docs/how-to/authorized-networks)
 
-If needed, a terraform script under `./terraform/1_env-foundations` has been provided to build out the above environment. To use, make a copy of `./terraform/1_env-foundations/terraform.tvars.template`, rename it to `./terraform/1_env-foundations/terraform.tvars`, and update the file with info specific to your environment.
+If needed, a terraform script under `./terraform/2_env-foundations` has been provided to build out the above environment. To use, make a copy of `./terraform/2_env-foundations/terraform.tvars.template`, rename it to `./terraform/2_env-foundations/terraform.tvars`, and update the file with info specific to your environment.
 
 ### Step #3: Enable Services and Setup IAM 
 Before deploying the pipeline, the following services have to be enabled and IAM permissions have to be granted:
@@ -101,7 +101,7 @@ Next, grant the permissions as indicated below:
 | GKE Hub SA | roles/gkehub.serviceAgent | CI/CD Project |
 | GKE Hub SA | roles/gkehub.serviceAgent | GKE Project |
 
-If needed, a terraform script under `./terraform/2_enable-services-and-set-IAM` has been provided to apply the above configs. To use, make a copy of `./terraform/2_enable-services-and-set-IAM/terraform.tvars.template`, rename it to `./terraform/2_enable-services-and-set-IAM/terraform.tvars`, and update the file with info specific to your environment.
+If needed, a terraform script under `./terraform/3_enable-services-and-set-IAM` has been provided to apply the above configs. To use, make a copy of `./terraform/3_enable-services-and-set-IAM/terraform.tvars.template`, rename it to `./terraform/3_enable-services-and-set-IAM/terraform.tvars`, and update the file with info specific to your environment.
 
 ### Step #4: Mirror Github repo into Cloud Source Repositories
 * in the GCP console, navigate to [Cloud Build > Triggers](https://console.cloud.google.com/cloud-build/triggers)
@@ -115,7 +115,7 @@ If needed, a terraform script under `./terraform/2_enable-services-and-set-IAM` 
 ### Step #5: Deploy Pipeline
 Pipeline can be deployed by either following the manual steps below, or by running the terraform script. 
 
-If going the terraform route, a terraform script under `./terraform/4_deploy_pipeline` has been provided. To use, make a copy of `./terraform/4_deploy-pipeline/terraform.tvars.template`, rename it to `./terraform/4_deploy-pipeline/terraform.tvars`, and update the file with info specific to your environment
+If going the terraform route, a terraform script under `./terraform/5_deploy_pipeline` has been provided. To use, make a copy of `./terraform/5_deploy-pipeline/terraform.tvars.template`, rename it to `./terraform/5_deploy-pipeline/terraform.tvars`, and update the file with info specific to your environment
 
 
 #### Manual Steps to Deploy Pipeline
@@ -261,6 +261,6 @@ gcloud beta container hub memberships generate-gateway-rbac \
 ```
 
 ### Step #6: Test Pipeline
-If you completed Step #5 using the provided terraform script, move the `./terraform/4_deploy-pipeline/cloudbuild.yaml` file to the root of the this repo. If you completed Step #5 using the manual steps, the file should already be at the root.
+If you completed Step #5 using the provided terraform script, move the `./terraform/5_deploy-pipeline/cloudbuild.yaml` file to the root of the this repo. If you completed Step #5 using the manual steps, the file should already be at the root.
 
 Push `cloudbuild.yaml` to your fork's main branch. Note that the `cloudbuild.yaml` file MUST be at the root of the repo. Once the push is completed, Cloud Build will trigger and begin building the sample app and deploying it to the test cluster. Navigate to Cloud Deploy to promote the code to the higher environments.
