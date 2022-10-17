@@ -6,6 +6,12 @@ description: pop-stats application delivery pipeline
 serialPipeline:
  stages:
  - targetId: test
+ - targetId: staging
+   profiles:
+   - staging
+ - targetId: prod
+   profiles:
+   - prod
 
 ---
 
@@ -15,10 +21,44 @@ metadata:
   name: test
 description: test cluster
 anthosCluster:
-  membership: projects/kwpark-deloitte-cicd-5afcb309/locations/global/memberships/my-test-cluster
+  membership: projects/kwpark-deloitte-cicd-6ec5f01f/locations/global/memberships/my-test-gke
 executionConfigs:
 - usages:
   - RENDER
   - DEPLOY
-  workerPool: projects/kwpark-deloitte-cicd-5afcb309/locations/us-central1/workerPools/my-private-pool
-  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-5afcb309.iam.gserviceaccount.com
+  workerPool: projects/kwpark-deloitte-cicd-6ec5f01f/locations/us-central1/workerPools/my-private-pool
+  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-6ec5f01f.iam.gserviceaccount.com
+  
+---
+
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: staging
+description: staging cluster
+anthosCluster:
+  membership: projects/kwpark-deloitte-cicd-6ec5f01f/locations/global/memberships/my-stage-gke
+executionConfigs:
+- usages:
+  - RENDER
+  - DEPLOY
+  workerPool: projects/kwpark-deloitte-cicd-6ec5f01f/locations/us-central1/workerPools/my-private-pool
+  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-6ec5f01f.iam.gserviceaccount.com
+
+
+---
+
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: prod
+description: prod cluster
+requireApproval: true
+anthosCluster:
+  membership: projects/kwpark-deloitte-cicd-6ec5f01f/locations/global/memberships/my-prod-gke
+executionConfigs:
+- usages:
+  - RENDER
+  - DEPLOY
+  workerPool: projects/kwpark-deloitte-cicd-6ec5f01f/locations/us-central1/workerPools/my-private-pool
+  serviceAccount: my-clouddeploy-sa@kwpark-deloitte-cicd-6ec5f01f.iam.gserviceaccount.com
