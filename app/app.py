@@ -4,19 +4,20 @@ import requests
 import json
 from flask import Flask, render_template, request
 
+# test
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     # site name from env variable
     site_name = os.environ.get('SITE_NAME')
-    pod_name = os.environ.get('POD_NAME') 
+    pod_name = os.environ.get('POD_NAME')
     # grab IP from env variable
     ip_address = get_ip()
     if ip_address =='': #ip_address is undefined, likely missing fall-back environment variable
         return render_template('error.html', pod_name=pod_name, site_name=site_name, error_status='Unable to get your IP address.')
     #if no zipcode in URL, guess based on geolocation
-    try: 
+    try:
         zipcode, country, lat, lng = get_location_by_ip(ip_address)
     except (requests.exceptions.RequestException, requests.exceptions.HTTPError):
         return render_template('error.html', pod_name=pod_name, site_name=site_name, error_status='Unable to reach the geolocation API. Try again later.')
@@ -30,19 +31,19 @@ def home():
         return render_template('error.html', pod_name=pod_name, site_name=site_name, error_status='Unable to reach the census data API.')
     # No errors, success path
     return render_template('index.html', pod_name=pod_name, site_name=site_name, zipcode=zipcode, county=county_name, population=county_population, density=density, lat=lat, lng=lng)
-      
+
 @app.route('/q', methods=['GET'])
 def address_query():
-    site_name = os.environ.get('SITE_NAME') 
+    site_name = os.environ.get('SITE_NAME')
     address_q = request.args['address']
-    # 
+    #
     try:
         lat, lng = get_geo_by_address(address_q)
     #    testing = get_geo_by_address(address_q)
     # API didn't return what was expected
     except requests.exceptions.HTTPError:
         return render_template('error.html', site_name=site_name, error_status=f'Address {address_q} is not valid.')
-    # catch other network issues 
+    # catch other network issues
     except requests.exceptions.RequestException:
         return render_template('error.html', site_name=site_name, error_status='Unable to reach the geolocation API server. Try again later.')
     #  get census data using geo coordinates
@@ -70,10 +71,10 @@ def health_check():
 
 def get_ip():
     # GCP Cloud Run needs X-Forwarded_For
-    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr) 
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
     # For dev testing, get external IP from environment variable
     if (re.search('^192|^127|^0\.|^172|^10\.', ip_address)):
-        ip_address = os.environ.get('DEV_EXT_IP')  
+        ip_address = os.environ.get('DEV_EXT_IP')
     return ip_address
 
 def get_location_by_ip(ip_address):
@@ -89,7 +90,7 @@ def get_location_by_ip(ip_address):
 def get_geo_by_address(address_input):
     address_query = requests.get(f'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address={address_input}&benchmark=2020&format=json')
     address_query.raise_for_status()
-    
+
     address_query_json = address_query.json()
     ##return address_query_json["result"]["addressMatches"]
     #test_list = json.loads(address_query_json["result"]["addressMatches"])
@@ -114,7 +115,7 @@ def get_census_data(lat, lng):
     # get state and county codes from FIPS code
     state_code = FIPS_code[0:2]
     county_code = FIPS_code[2:5]
-    
+
     # get county population from the census API
     population = requests.get(f'https://api.census.gov/data/2019/pep/population?get=POP,NAME,DENSITY&for=county:{county_code}&in=state:{state_code}')
     population.raise_for_status()
