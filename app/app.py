@@ -4,7 +4,6 @@ import requests
 import json
 from flask import Flask, render_template, request
 
-# test
 app = Flask(__name__)
 
 @app.route('/')
