@@ -267,3 +267,4 @@ gcloud beta container hub memberships generate-gateway-rbac \
 If you completed Step #5 using the provided terraform script, move the `./terraform/5_deploy-pipeline/cloudbuild.yaml` file to the root of the this repo. If you completed Step #5 using the manual steps, the file should already be at the root.
 
 Push `cloudbuild.yaml` to your fork's main branch. Note that the `cloudbuild.yaml` file MUST be at the root of the repo. Once the push is completed, Cloud Build will trigger and begin building the sample app and deploying it to the test cluster. Navigate to Cloud Deploy to promote the code to the higher environments.
+
